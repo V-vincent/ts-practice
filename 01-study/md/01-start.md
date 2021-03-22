@@ -1,4 +1,4 @@
-
+### 开始使用TypeScript
 #### 安装 TypeScript
 通过npm直接在全局安装 TypeScript
 ```
