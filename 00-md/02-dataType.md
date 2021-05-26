@@ -212,7 +212,7 @@ console.log(tuple[2]); // Tuple type '[string, number]' of length '2' has no ele
 `object` 表示非原始类型，也就是除 `number`，`string`，`boolean`，`symbol`，`null` 或 `undefined` 之外的类型。
 ```ts
 enum Direction {
-    Center = 1
+  Center = 1
 }
 let value: object
 value = Direction
@@ -221,3 +221,274 @@ value = [1, 'hello']
 value = {}
 ```
 可以看到，普通对象、枚举、数组、元组通通都是 `object` 类型。
+
+### 枚举类型
+枚举类型是很多语言都拥有的类型，它用于声明一组命名的常数，当一个变量有几种可能的取值时，可以将它定义为枚举类型。
+#### 数字枚举
+当声明一个枚举类型时，虽然没有给它们赋值，但是它们的值其实是默认的数字类型，而且默认从 `0` 开始依次累加：
+```ts
+enum Direction {
+  Up,
+  Down,
+  Left,
+  Right
+}
+
+console.log(Direction.Up === 0); // true
+console.log(Direction.Down === 1); // true
+console.log(Direction.Left === 2); // true
+console.log(Direction.Right === 3); // true
+```
+因此当我们把第一个值赋值后，后面也会根据第一个值进行累加：
+```ts
+enum Direction {
+  Up = 10,
+  Down,
+  Left,
+  Right
+}
+
+console.log(Direction.Up, Direction.Down, Direction.Left, Direction.Right); // 10 11 12 13
+```
+
+#### 字符串枚举
+枚举类型的值也可以是字符串类型：
+```ts
+enum Direction {
+  Up = 'Up',
+  Down = 'Down',
+  Left = 'Left',
+  Right = 'Right'
+}
+
+console.log(Direction['Right'], Direction.Up); // Right Up
+```
+#### 异构枚举
+已经有了字符串枚举和数字枚举，那么这两个枚举是不是可以混合使用呢？
+```ts
+enum BooleanLikeHeterogeneousEnum {
+  No = 0,
+  Yes = "YES",
+}
+```
+是的，这样也是没问题的，通常情况下很少会这样使用枚举，但是从技术的角度来说，它是可行的。
+#### 反向映射
+看一个例子：
+```ts
+enum Direction {
+  Up,
+  Down,
+  Left,
+  Right
+}
+
+console.log(Direction.Up === 0); // true
+console.log(Direction.Down === 1); // true
+console.log(Direction.Left === 2); // true
+console.log(Direction.Right === 3); // true
+```
+可以通过枚举名字获取枚举值，那么能不能通过枚举值获取枚举名字呢？
+是可以的：
+```ts
+enum Direction {
+  Up,
+  Down,
+  Left,
+  Right
+}
+
+console.log(Direction[0]); // Up
+```
+印象中一个 JavaScript 对象一般都是正向映射的，即 `name => value`，为什么在枚举中是可以正反向同时映射的？即 `name <=> value`。接下来了解枚举的本质就可以解答该疑问了
+#### 枚举的本质
+以上面的 `Direction` 枚举类型为例，来看看枚举类型被编译为 JavaScript 后是什么样子:
+```js
+var Direction;
+(function (Direction) {
+  Direction[Direction["Up"] = 10] = "Up";
+  Direction[Direction["Down"] = 11] = "Down";
+  Direction[Direction["Left"] = 12] = "Left";
+  Direction[Direction["Right"] = 13] = "Right";
+})(Direction || (Direction = {}));
+```
+编译后的代码可能看起来比较复杂，不过我们可以把 `Direction` 看成一个对象，比如我们在 TypeScript 中做几个小实验:
+```ts
+enum Direction {
+  Up = 10,
+  Down,
+  Left,
+  Right
+}
+
+console.log(Direction[10], Direction['Right']); // Up 13
+```
+原因就在编译后的 JavaScript 中体现出来了，因为 `Direction[Direction["Up"] = 10] = "Up"` 也就是 `Direction[10] = "Up"` ，所以我们可以把枚举类型看成一个JavaScript对象，而由于其特殊的构造，导致其拥有正反向同时映射的特性。
+
+#### 常量枚举
+枚举其实可以被 `const` 声明为常量的，这样有什么好处？看以下例子:
+```ts
+const enum Direction {
+  Up = 'Up',
+  Down = 'Down',
+  Left = 'Left',
+  Right = 'Right'
+}
+
+const a = Direction.Up;
+```
+编译为 JavaScript 后是这样的：
+```js
+var a = "Up";
+```
+在上面看到枚举类型会被编译为 JavaScript 对象，怎么这里没有了?
+
+这就是常量枚举的作用，因为下面的变量 `a` 已经使用过了枚举类型，之后就没有用了，也没有必要存在与 JavaScript 中了， TypeScript 在这一步就把 `Direction` 去掉了，直接使用 `Direction` 的值即可，这是性能提升的一个方案。
+如果非要 TypeScript 保留对象 `Direction`，那么可以添加编译选项 `--preserveConstEnums`。
+
+#### 联合枚举与枚举成员的类型
+假设枚举的所有成员都是字面量类型的值，那么枚举的每个成员和枚举值本身都可以作为类型来使用。
+- 任何字符串字面量，如：
+```ts
+const enum Direction {
+  Up = 'Up',
+  Down = 'Down',
+  Left = 'Left',
+  Right = 'Right'
+}
+```
+- 任何数字字面量，如：
+```ts
+enum Direction {
+  Up,
+  Down,
+  Left,
+  Right
+}
+``` 
+- 应用了一元 `-` 符号的数字字面量，如:
+```ts
+enum Direction {
+  Up = -1,
+  Down = -2,
+  Left = -3,
+  Right = -4,
+}
+```
+#### 枚举成员类型
+当所有枚举成员都拥有字面量枚举值时，它就带有了一种特殊的语义，即枚举成员成为了类型。
+比如声明一个数字类型：
+```ts
+enum Direction {
+  Up,
+  Down,
+  Left,
+  Right,
+}
+const a = 0;
+console.log(a === Direction.Up); // true
+```
+把成员当做值使用，看来是没问题的，因为成员值本身就是 `0`，那么再加几行代码：
+```ts
+type c = 0
+declare let b: c
+b = 1 // 不能将类型“1”分配给类型“0”
+b = Direction.Up // ok
+```
+可以看到，上面的结果显示这个枚举的成员居然也可以被当做类型使用，这就是枚举成员当做类型使用的情况。
+
+#### 联合枚举类型
+由于联合联合枚举，类型系统可以知道枚举里的值的集合。
+```ts
+enum Direction {
+  Up,
+  Down,
+  Left,
+  Right
+}
+
+declare let a: Direction
+
+enum Animal {
+  Dog,
+  Cat
+}
+
+a = Direction.Up // ok
+a = Animal.Dog // 不能将类型“Animal.Dog”分配给类型“Direction”
+```
+把 `a` 声明为 `Direction` 类型，可以看成我们声明了一个联合类型 `Direction.Up | Direction.Down | Direction.Left | Direction.Right`，只有这四个类型其中的成员才符合要求。
+#### 枚举合并
+可以分开声明枚举，它们会自动合并
+```ts
+enum Direction {
+  Up = 'Up',
+  Down = 'Down',
+  Left = 'Left',
+  Right = 'Right'
+}
+
+enum Direction {
+  Center = 1
+}
+```
+编译为 JavaScript 后的代码如下：
+```js
+var Direction;
+(function (Direction) {
+  Direction["Up"] = "Up";
+  Direction["Down"] = "Down";
+  Direction["Left"] = "Left";
+  Direction["Right"] = "Right";
+})(Direction || (Direction = {}));
+(function (Direction) {
+  Direction[Direction["Center"] = 1] = "Center";
+})(Direction || (Direction = {}));
+```
+#### 为枚举添加静态方法
+借助 `namespace` 命名空间，可以给枚举添加静态方法。举个简单的例子，假设有十二个月份：
+```ts
+enum Month {
+  January,
+  February,
+  March,
+  April,
+  May,
+  June,
+  July,
+  August,
+  September,
+  October,
+  November,
+  December,
+}
+```
+现在编写一个静态方法，这个方法可以帮助我们把夏天的月份找出来：
+```ts
+function isSummer(month: Month) {
+  switch (month) {
+    case Month.June:
+    case Month.July:
+    case Month.August:
+      return true;
+    default:
+      return false
+  }
+}
+```
+想要把两者结合就需要借助命名空间的力量了：
+```ts
+namespace Month {
+  export function isSummer(month: Month) {
+    switch (month) {
+      case Month.June:
+      case Month.July:
+      case Month.August:
+        return true;
+      default:
+        return false
+    }
+  }
+}
+
+console.log(Month.isSummer(Month.January)) // false
+```
