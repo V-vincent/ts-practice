@@ -11,3 +11,10 @@ x = ['hello', 10]; // OK
 // 元组越界
 // x.push(2);
 // console.log(x[2]);
+
+interface User {
+  name: string
+  age: number
+  isMale: boolean
+}
+const getUserName = (user: User) => user.name
