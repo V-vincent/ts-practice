@@ -12,9 +12,13 @@ x = ['hello', 10]; // OK
 // x.push(2);
 // console.log(x[2]);
 
+interface Say {
+  (words: string): string
+}
 interface User {
   name: string
-  age: number
-  isMale: boolean
+  age?: number
+  readonly isMale: boolean
+  say: Say
 }
 const getUserName = (user: User) => user.name
